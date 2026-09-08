@@ -194,6 +194,9 @@ abstract class Package_PHP_XHTML extends Package_Generic_XHTML {
         "fieldsynopsis"                => array(
             "modifier"                 => "public",
         ),
+        "methodname"                   => array(
+            "href"                     => null,
+        ),
         "container_chunk"              => null,
         "qandaentry"                   => array(
         ),
@@ -510,6 +513,8 @@ abstract class Package_PHP_XHTML extends Package_Generic_XHTML {
                     $href = '#' .$linkto;
                 }
                 $href = '<a href="' .$href. '">';
+            } elseif (isset($attrs[Reader::XMLNS_XLINK]["href"])) {
+                $href = '<a href="' . $attrs[Reader::XMLNS_XLINK]["href"] . '" class="external">';
             }
 
             if (
@@ -522,7 +527,7 @@ abstract class Package_PHP_XHTML extends Package_Generic_XHTML {
             }
             return ' <var class="'.$name.'">'.$href.'$';
         }
-        if (isset($attrs[Reader::XMLNS_DOCBOOK]["linkend"])) {
+        if (isset($attrs[Reader::XMLNS_DOCBOOK]["linkend"]) || isset($attrs[Reader::XMLNS_XLINK]["href"])) {
             return '</a></var>';
         }
         return '</var>';
@@ -826,6 +831,11 @@ abstract class Package_PHP_XHTML extends Package_Generic_XHTML {
         }
 
         $display_value = parent::format_classsynopsis_methodsynopsis_methodname_text($value, $tag);
+
+        if ($this->cchunk["methodname"]["href"] !== null) {
+            return '<a href="' . $this->cchunk["methodname"]["href"] . '" class="' . $tag . ' external">' . $display_value . '</a>';
+        }
+
         return $this->format_function_text($value, $tag, $display_value);
     }
 
@@ -846,11 +856,13 @@ abstract class Package_PHP_XHTML extends Package_Generic_XHTML {
 
     public function format_methodsynopsis_function($open, $tag, $attrs, $props) {
         if ($open) {
+            $this->cchunk["methodname"]["href"] = $attrs[Reader::XMLNS_XLINK]["href"] ?? null;
             return
                 '<span class="modifier">function</span> '
                 . $this->format_function($open, $tag, $attrs, $props);
         }
 
+        $this->cchunk["methodname"] = $this->dchunk["methodname"];
         return $this->format_function($open, $tag, $attrs, $props);
     }
 
