@@ -2,11 +2,36 @@
 <chapter xml:id="classsynopsis_external_link_rendering" xmlns="http://docbook.org/ns/docbook" xmlns:xlink="http://www.w3.org/1999/xlink">
 
  <section>
-  <para>1. External links on methodname and varname in a class synopsis</para>
+  <para>1. External links on classname, interfacename, type, methodname and varname in a class synopsis</para>
   <classsynopsis class="class">
    <ooclass>
     <classname>ClassName</classname>
    </ooclass>
+
+   <ooclass>
+    <modifier>extends</modifier>
+    <classname xlink:href="https://example.com/parent">ParentClass</classname>
+   </ooclass>
+
+   <oointerface>
+    <interfacename xlink:href="https://example.com/interface">LinkedInterface</interfacename>
+   </oointerface>
+
+   <oointerface>
+    <interfacename>PlainInterface</interfacename>
+   </oointerface>
+
+   <fieldsynopsis>
+    <modifier>public</modifier>
+    <type class="union"><type xlink:href="https://example.com/type">LinkedType</type><type>null</type></type>
+    <varname>typedProperty</varname>
+   </fieldsynopsis>
+
+   <methodsynopsis>
+    <modifier>public</modifier> <type class="union"><type xlink:href="https://example.com/type">LinkedType</type><type>null</type></type><methodname>ClassName::typedMethod</methodname>
+    <methodparam><type xlink:href="https://example.com/type">LinkedType</type><parameter>linked</parameter></methodparam>
+    <methodparam><type class="union"><type xlink:href="https://example.com/type">LinkedType</type><type>int</type></type><parameter>union</parameter></methodparam>
+   </methodsynopsis>
 
    <fieldsynopsis>
     <modifier>public</modifier>

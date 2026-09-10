@@ -1,5 +1,5 @@
 --TEST--
-Class synopsis external link rendering 001 - xlink:href on methodname and varname
+Class synopsis external link rendering 001 - xlink:href on classname, interfacename, type, methodname and varname
 --FILE--
 <?php
 namespace phpdotnet\phd;
@@ -19,11 +19,31 @@ Content:
 <div id="classsynopsis_external_link_rendering" class="chapter">
 
  <div class="section">
-  <p class="para">1. External links on methodname and varname in a class synopsis</p>
+  <p class="para">1. External links on classname, interfacename, type, methodname and varname in a class synopsis</p>
   <div class="classsynopsis"><div class="classsynopsisinfo">
    
     <span class="modifier">class</span> <strong class="classname"><strong class="classname">ClassName</strong></strong>
-    {</div>
+   
+
+   
+    <span class="modifier">extends</span>
+     <a href="https://example.com/parent" class="classname external">ParentClass</a>
+   
+
+   
+     <a href="https://example.com/interface" class="interfacename external">LinkedInterface</a>,
+
+    <strong class="interfacename">PlainInterface</strong> {</div>
+
+   <div class="fieldsynopsis">
+    <span class="modifier">public</span>
+    <span class="type">?</span><span class="type"><span class="type"><a href="https://example.com/type" class="type LinkedType external">LinkedType</a></span><span class="type"></span></span>
+     <var class="varname">$<var class="varname">typedProperty</var></var>;</div>
+
+
+   <div class="methodsynopsis dc-description">
+    <span class="modifier">public</span> <span class="modifier">function</span> <span class="methodname"><strong>typedMethod</strong></span>(<span class="methodparam"><span class="type"><a href="https://example.com/type" class="type LinkedType external">LinkedType</a></span> <code class="parameter">$linked</code></span>, <span class="methodparam"><span class="type"><span class="type"><a href="https://example.com/type" class="type LinkedType external">LinkedType</a></span>|<span class="type"><a href="language.types.integer.html" class="type int">int</a></span></span> <code class="parameter">$union</code></span>): <span class="type"><span class="type"><a href="language.types.null.html" class="type null">?</a></span><span class="type"><a href="https://example.com/type" class="type LinkedType external">LinkedType</a></span></span></div>
+
 
    <div class="fieldsynopsis">
     <span class="modifier">public</span>

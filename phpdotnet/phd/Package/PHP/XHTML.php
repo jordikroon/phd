@@ -197,6 +197,12 @@ abstract class Package_PHP_XHTML extends Package_Generic_XHTML {
         "methodname"                   => array(
             "href"                     => null,
         ),
+        "classname"                    => array(
+            "href"                     => null,
+        ),
+        "type"                         => array(
+            "href"                     => null,
+        ),
         "container_chunk"              => null,
         "qandaentry"                   => array(
         ),
@@ -209,6 +215,7 @@ abstract class Package_PHP_XHTML extends Package_Generic_XHTML {
             "type_separator"           => array(),
             "type_separator_stack"     => array(),
             "paramtypes"               => array(),
+            "paramtypes_href"          => array(),
         ),
     );
 
@@ -385,6 +392,7 @@ abstract class Package_PHP_XHTML extends Package_Generic_XHTML {
     }
 
     public function format_type($open, $tag, $attrs, $props) {
+        $this->rememberXlinkHref("type", $open, $attrs);
         $retval = '';
         if ($open) {
             if (isset($attrs[Reader::XMLNS_DOCBOOK]["class"])) {
@@ -393,7 +401,7 @@ abstract class Package_PHP_XHTML extends Package_Generic_XHTML {
                 $isUnionType = $attrs[Reader::XMLNS_DOCBOOK]["class"] === "union";
                 if (
                     $isUnionType &&
-                    substr_count($props["innerXml"], '<type xmlns="http://docbook.org/ns/docbook">') === 2 &&
+                    preg_match_all('~<type xmlns="http://docbook.org/ns/docbook"[^>]*>~', $props["innerXml"]) === 2 &&
                     strpos($props["innerXml"], '<type xmlns="http://docbook.org/ns/docbook">null</type>') !== false
                 ) {
                     $this->simple_nullable = true;
@@ -429,6 +437,7 @@ abstract class Package_PHP_XHTML extends Package_Generic_XHTML {
     }
 
     public function format_methodsynopsis_type($open, $tag, $attrs) {
+        $this->rememberXlinkHref("type", $open, $attrs);
         if ($open) {
             if (isset($attrs[Reader::XMLNS_DOCBOOK]["class"])) {
                 $this->cchunk["methodsynopsis"]["type_separator_stack"][] = match ($attrs[Reader::XMLNS_DOCBOOK]["class"]) {
@@ -563,7 +572,8 @@ abstract class Package_PHP_XHTML extends Package_Generic_XHTML {
         if ($this->cchunk["methodsynopsis"]["returntypes"]) {
             $type = $this->format_types(
                 $this->cchunk["methodsynopsis"]["type_separator"],
-                $this->cchunk["methodsynopsis"]["returntypes"]
+                $this->cchunk["methodsynopsis"]["returntypes"],
+                $this->cchunk["methodsynopsis"]["returntypes_href"]
             );
 
             $content .= ': ' . $type;
@@ -575,7 +585,7 @@ abstract class Package_PHP_XHTML extends Package_Generic_XHTML {
         return $content;
     }
 
-    private function format_types($type_separators, $paramOrReturnType) {
+    private function format_types($type_separators, $paramOrReturnType, $hrefs = []) {
         $types = [];
 
         if (
@@ -589,8 +599,8 @@ abstract class Package_PHP_XHTML extends Package_Generic_XHTML {
             $types[] = '<span class="type">' . $formatted_type .'</span>';
         }
 
-        foreach ($paramOrReturnType as $individualType) {
-            $formatted_type = self::format_type_text($individualType, "type");
+        foreach ($paramOrReturnType as $i => $individualType) {
+            $formatted_type = self::format_type_text($individualType, "type", $hrefs[$i] ?? null);
             if ($formatted_type === false) {
                 $formatted_type = $individualType;
             }
@@ -624,6 +634,7 @@ abstract class Package_PHP_XHTML extends Package_Generic_XHTML {
 
     public function format_type_methodsynopsis_text($type, $tagname) {
         $this->cchunk["methodsynopsis"]["returntypes"][] = $type;
+        $this->cchunk["methodsynopsis"]["returntypes_href"][] = $this->cchunk["type"]["href"];
         $this->cchunk["methodsynopsis"]["type_separator"][] = end($this->cchunk["methodsynopsis"]["type_separator_stack"]);
 
         return "";
@@ -635,7 +646,8 @@ abstract class Package_PHP_XHTML extends Package_Generic_XHTML {
             if ($this->cchunk["methodparam"]["paramtypes"]) {
                 $type = $this->format_types(
                     $this->cchunk["methodparam"]["type_separator"],
-                    $this->cchunk["methodparam"]["paramtypes"]
+                    $this->cchunk["methodparam"]["paramtypes"],
+                    $this->cchunk["methodparam"]["paramtypes_href"]
                 );
             }
             $this->cchunk["methodparam"] = $this->dchunk["methodparam"];
@@ -658,6 +670,7 @@ abstract class Package_PHP_XHTML extends Package_Generic_XHTML {
     }
 
     public function format_type_methodparam($open, $tag, $attrs) {
+        $this->rememberXlinkHref("type", $open, $attrs);
         if ($open) {
             if (isset($attrs[Reader::XMLNS_DOCBOOK]["class"])) {
                 $this->cchunk["methodparam"]["type_separator_stack"][] = match ($attrs[Reader::XMLNS_DOCBOOK]["class"]) {
@@ -681,12 +694,18 @@ abstract class Package_PHP_XHTML extends Package_Generic_XHTML {
 
     public function format_type_methodparam_text($type, $tagname) {
         $this->cchunk["methodparam"]["paramtypes"][] = $type;
+        $this->cchunk["methodparam"]["paramtypes_href"][] = $this->cchunk["type"]["href"];
         $this->cchunk["methodparam"]["type_separator"][] = end($this->cchunk["methodparam"]["type_separator_stack"]);
 
         return "";
     }
 
-    public function format_type_text($type, $tagname) {
+    public function format_type_text($type, $tagname, $href = null) {
+        $href ??= $this->cchunk["type"]["href"];
+        if ($href !== null) {
+            return '<a href="' . $href . '" class="' . $tagname . ' ' . ltrim($type, "\\") . ' external">' . $type . '</a>';
+        }
+
         $t = strtr($this->normalizeFQN($type), ["_" => "-", "\\" => "-"]);
 
         switch($t) {
@@ -914,6 +933,31 @@ abstract class Package_PHP_XHTML extends Package_Generic_XHTML {
         return '<strong>' .$display_value. '</strong>';
     }
 
+    /** Remember the xlink:href of the element being opened so the text handler can render it as an external link */
+    private function rememberXlinkHref(string $key, bool $open, array $attrs): void {
+        $this->cchunk[$key]["href"] = $open ? ($attrs[Reader::XMLNS_XLINK]["href"] ?? null) : null;
+    }
+
+    public function format_classsynopsis_ooclass_classname($open, $name, $attrs, $props) {
+        $this->rememberXlinkHref("classname", $open, $attrs);
+        return parent::format_classsynopsis_ooclass_classname($open, $name, $attrs, $props);
+    }
+
+    public function format_classsynopsisinfo_ooclass_classname($open, $name, $attrs) {
+        $this->rememberXlinkHref("classname", $open, $attrs);
+        return parent::format_classsynopsisinfo_ooclass_classname($open, $name, $attrs);
+    }
+
+    public function format_classsynopsis_oointerface_interfacename($open, $name, $attrs, $props) {
+        $this->rememberXlinkHref("classname", $open, $attrs);
+        return parent::format_classsynopsis_oointerface_interfacename($open, $name, $attrs, $props);
+    }
+
+    public function format_classsynopsisinfo_oointerface_interfacename($open, $name, $attrs) {
+        $this->rememberXlinkHref("classname", $open, $attrs);
+        return parent::format_classsynopsisinfo_oointerface_interfacename($open, $name, $attrs);
+    }
+
     public function format_grep_classname_text($value, $tag) {
         $this->cchunk["class_name_ref"] = strtolower($value);
     }
@@ -933,6 +977,9 @@ abstract class Package_PHP_XHTML extends Package_Generic_XHTML {
     }
 
     public function format_classname_text($value, $tag) {
+        if ($this->cchunk["classname"]["href"] !== null) {
+            return '<a href="' . $this->cchunk["classname"]["href"] . '" class="' . $tag . ' external">' . $value . '</a>';
+        }
         if (($filename = $this->getClassnameLink($this->normalizeFQN($value))) !== null && $this->cchunk["class_name_ref"] !== strtolower($value)) {
             $href = $this->chunked ? $filename.$this->ext : "#$filename";
             return '<a href="'.$href. '" class="' .$tag. '">' .$value. '</a>';
