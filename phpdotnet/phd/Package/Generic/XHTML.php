@@ -1478,7 +1478,11 @@ abstract class Package_Generic_XHTML extends Format_Abstract_XHTML {
             return '<span class="modifier">';
         }
         if (isset($attrs[Reader::XMLNS_DOCBOOK]["role"])) {
+            $role = $this->getRole();
             $this->popRole();
+            if ($role === "attribute") {
+                return '</span> ';
+            }
         }
         return '</span>';
     }
@@ -1502,15 +1506,7 @@ abstract class Package_Generic_XHTML extends Format_Abstract_XHTML {
 
         // Simple attribute: #[\Name]
         if (preg_match('/^#\[(' . $namePattern . ')]$/', $trimmed, $match)) {
-            $name = $match[1];
-            $attribute = strtolower(ltrim($name, "\\"));
-            $href = $this->getFilename('class.' . $attribute);
-            $token = '#[' . $name . ']';
-            if (!$href) {
-                return $token;
-            }
-
-            return '<a href="' . $href . $this->getExt() . '">' . $token . '</a> ';
+            return '#[' . $this->link_attribute_name($match[1]) . ']';
         }
 
         // Opening of an attribute followed by child elements: #[\Name(
@@ -1528,6 +1524,9 @@ abstract class Package_Generic_XHTML extends Format_Abstract_XHTML {
     }
 
     private function link_attribute_name(string $name): string {
+        if ($name[0] !== '\\') {
+            $this->outputHandler->v('Attribute name "%s" is not fully qualified', $name, VERBOSE_MESSAGES);
+        }
         $attribute = strtolower(ltrim($name, "\\"));
         $href = $this->getFilename('class.' . $attribute);
         if (!$href) {
